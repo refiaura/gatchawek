@@ -18,7 +18,12 @@
 - Seluruh mutasi state kritis (tarik kartu, reset kuota, settlement trade) wajib bersifat atomik menggunakan `db.batch()` dengan optimistic locking (`version` atau `settle_token`).
 
 ## 4. Verification Before Finishing a Task
-Sebelum menyatakan satu fase selesai, wajib jalankan dan pastikan lulus:
+Sebelum melakukan commit dan menyatakan satu fase selesai, wajib jalankan dan pastikan lulus:
 1. `npm run typecheck` (atau `tsc --noEmit`)
 2. `npm test` (unit & integration test)
 3. `npm run lint`
+
+## 5. Git Workflow & Version Control
+- **Mulai Tugas (Branching):** Sebelum menulis atau mengubah kode apa pun, wajib pastikan berada di `main`, jalankan `git pull origin main`, lalu buat dan pindah ke branch baru dengan format `<tipe>/phase-<nomor>-<deskripsi-singkat>` (contoh: `feat/phase-0-foundation`). Dilarang bekerja atau commit langsung ke branch `main`.
+- **Selesai Tugas (Commit & Push):** Setelah seluruh Acceptance Criteria dan langkah verifikasi di Bagian 4 lulus, wajib lakukan `git add`, `git commit` menggunakan standar **Conventional Commits** (`feat:`, `fix:`, `chore:`, `test:`, `refactor:`), dan `git push -u origin <nama-branch>` ke remote repository.
+- **Keamanan Secret:** Pastikan file `.dev.vars`, `.env`, dan kredensial rahasia lainnya masuk ke dalam `.gitignore` dan tidak pernah ikut ter-commit.
