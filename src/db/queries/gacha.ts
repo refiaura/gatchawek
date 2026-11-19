@@ -50,7 +50,7 @@ function toPoolConfig(row: typeof pools.$inferSelect): PoolConfig {
   };
 }
 
-/** Null when the pool id is unknown (e.g. DB not seeded yet). */
+/** Null when the pool id is unknown or disabled (takedown). */
 export async function getPoolConfig(
   db: Db,
   poolId: string,
@@ -58,7 +58,7 @@ export async function getPoolConfig(
   const rows = await db
     .select()
     .from(pools)
-    .where(eq(pools.id, poolId))
+    .where(and(eq(pools.id, poolId), eq(pools.enabled, true)))
     .limit(1);
   const row = rows[0];
   return row === undefined ? null : toPoolConfig(row);
@@ -385,10 +385,13 @@ export async function executeReset(
       readyAt: recheck.readyAt,
     };
   }
+  // Lost the race but the fresh state looks resettable (e.g. raced a pull
+  // that spent stamina). A concurrent reset just consumed the cooldown, so
+  // report now + cooldown instead of a possibly-epoch timestamp.
   return {
     status: "denied",
     reason: "cooldown",
-    readyAt: resetReadyAt(fresh.lastResetAt, pool.resetCooldownSec),
+    readyAt: now + pool.resetCooldownSec,
   };
 }
 
@@ -399,6 +402,7 @@ export interface PoolStatusRow {
   nextAt: number | null;
   resetReadyAt: number;
   resetReady: boolean;
+  resetDeniedReason: "full" | "cooldown" | null;
   owned: number;
   total: number;
 }
@@ -408,7 +412,11 @@ export async function getStatusOverview(
   userId: string,
   now: number,
 ): Promise<PoolStatusRow[]> {
-  const poolRows = await db.select().from(pools).orderBy(pools.sortOrder);
+  const poolRows = await db
+    .select()
+    .from(pools)
+    .where(eq(pools.enabled, true))
+    .orderBy(pools.sortOrder);
   if (poolRows.length === 0) return [];
   const configs = poolRows.map(toPoolConfig);
   const results = await db.batch([
@@ -465,6 +473,7 @@ export async function getStatusOverview(
       nextAt: nextTickAt(normalized, pool.staminaMax, pool.regenIntervalSec),
       resetReadyAt: readyAt,
       resetReady: check.ok,
+      resetDeniedReason: check.ok ? null : check.reason,
       owned: ownedCounts[i]?.[0]?.n ?? 0,
       total: row.memberCount,
     };

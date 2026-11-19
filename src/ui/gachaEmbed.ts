@@ -37,12 +37,6 @@ export interface PullEmbedArgs {
   imageUrl: string;
 }
 
-const KIND_EMOJI: Record<PullKind, string> = {
-  "new-member": "✨",
-  "new-photo": "🆕",
-  duplicate: "🔁",
-};
-
 function describePull(kind: PullKind, quantity: number): string {
   switch (kind) {
     case "new-member":
@@ -93,10 +87,6 @@ export function againButton(
   };
 }
 
-export function pullKindEmoji(kind: PullKind): string {
-  return KIND_EMOJI[kind];
-}
-
 export function buildStatusEmbed(
   rows: PoolStatusRow[],
   userId: string,
@@ -106,9 +96,12 @@ export function buildStatusEmbed(
       row.nextAt === null
         ? "penuh"
         : `nambah lagi <t:${row.nextAt}:R>`;
-    const reset = row.resetReady
-      ? "siap dipakai"
-      : `bisa lagi <t:${row.resetReadyAt}:R>`;
+    const reset =
+      row.resetDeniedReason === "full"
+        ? "tidak perlu (masih penuh)"
+        : row.resetReady
+          ? "siap dipakai"
+          : `bisa lagi <t:${row.resetReadyAt}:R>`;
     return [
       `${row.pool.emoji} **${row.pool.name}**`,
       `🎲 Sisa tarik (/gacha pool:${row.pool.id}): ${row.stamina}/${row.max}, ${tick}`,

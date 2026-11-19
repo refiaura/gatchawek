@@ -67,6 +67,13 @@ export function renderSeedSql(
         `ON CONFLICT(id) DO UPDATE SET name=excluded.name, emoji=excluded.emoji, sort_order=excluded.sort_order, stamina_max=excluded.stamina_max, regen_interval_sec=excluded.regen_interval_sec, reset_cooldown_sec=excluded.reset_cooldown_sec, enabled=1;`,
     );
   }
+  // Pools removed from data/pools.json (takedown): disable, never delete.
+  if (loaded.pools.length > 0) {
+    const live = loaded.pools.map((p) => sqlText(p.id)).join(",");
+    lines.push(`UPDATE pools SET enabled=0 WHERE id NOT IN (${live});`);
+  } else {
+    lines.push(`UPDATE pools SET enabled=0;`);
+  }
   const poolMemberCount = new Map<string, number>();
   for (const { manifest } of loaded.groups) {
     poolMemberCount.set(
@@ -106,6 +113,27 @@ export function renderSeedSql(
         );
       }
     }
+  }
+  // Groups/members gone from the manifest (takedown): disable, never delete.
+  // Cards are disabled separately below; orphaned groups stay hidden from
+  // the catalog and koleksi scopes.
+  const liveGroupIds = new Set<string>();
+  const liveMemberIds = new Set<string>();
+  for (const { manifest } of loaded.groups) {
+    liveGroupIds.add(manifest.group.id);
+    for (const member of manifest.members) liveMemberIds.add(member.id);
+  }
+  if (liveGroupIds.size > 0) {
+    const list = [...liveGroupIds].map(sqlText).join(",");
+    lines.push(`UPDATE groups SET enabled=0 WHERE id NOT IN (${list});`);
+  } else {
+    lines.push(`UPDATE groups SET enabled=0;`);
+  }
+  if (liveMemberIds.size > 0) {
+    const list = [...liveMemberIds].map(sqlText).join(",");
+    lines.push(`UPDATE members SET enabled=0 WHERE id NOT IN (${list});`);
+  } else {
+    lines.push(`UPDATE members SET enabled=0;`);
   }
   // Cards gone from the manifest (takedown): disable, never delete.
   if (liveCardIds.size > 0) {
