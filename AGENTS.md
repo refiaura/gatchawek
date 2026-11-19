@@ -1,0 +1,24 @@
+# Project Rules & Architecture Guidelines
+
+## 1. Source of Truth
+- Seluruh spesifikasi teknis, skema database, dan urutan fase pengerjaan merujuk mutlak pada `docs/Spec_Discord_Photocard_Gacha_Bot_EqSuit.md`.
+- Kerjakan proyek secara bertahap per fase. Dilarang melompat ke fase berikutnya sebelum seluruh Acceptance Criteria fase aktif lulus.
+
+## 2. Extensibility & Data-Driven Design
+- Bot ini dirancang untuk menampung banyak kategori kartu (`pools`) yang dapat terus bertambah di masa depan tanpa mengubah kode aplikasi.
+- Dilarang melakukan hardcode nama/ID pool di dalam logika bisnis, handler command, maupun custom ID komponen tombol.
+- Gunakan mekanisme Discord Command Autocomplete (query dinamis ke tabel `pools` / `sub_groups`) untuk opsi pemilihan pool agar ekspansi kategori baru di masa depan tidak memerlukan registrasi ulang slash command.
+
+## 3. Strict Layering & TypeScript Rules
+- Dilarang menggunakan tipe `any` atau `@ts-ignore`.
+- Pertahankan pemisahan layer secara ketat:
+  - `src/domain/`: Fungsi murni (kalkulasi stamina, RNG rarity, validasi trade). Dilarang mengimpor modul database atau Hono di layer ini.
+  - `src/db/queries/`: Seluruh query Drizzle ORM dan operasi `db.batch()`.
+  - `src/discord/`: Adapter HTTP interactions, builder embed, dan parsing payload.
+- Seluruh mutasi state kritis (tarik kartu, reset kuota, settlement trade) wajib bersifat atomik menggunakan `db.batch()` dengan optimistic locking (`version` atau `settle_token`).
+
+## 4. Verification Before Finishing a Task
+Sebelum menyatakan satu fase selesai, wajib jalankan dan pastikan lulus:
+1. `npm run typecheck` (atau `tsc --noEmit`)
+2. `npm test` (unit & integration test)
+3. `npm run lint`
