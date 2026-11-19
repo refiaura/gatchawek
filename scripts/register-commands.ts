@@ -5,6 +5,15 @@ import {
   type RESTPostAPIChatInputApplicationCommandsJSONBody,
 } from "discord-api-types/v10";
 import { commandDefinitions } from "../src/commands/registry.js";
+// Load repo .env automatically so `pnpm register` works without manual export.
+// No-op on old Node or when CI injects env directly (existing vars win).
+if (typeof process.loadEnvFile === "function") {
+  try {
+    process.loadEnvFile();
+  } catch {
+    // Missing .env: fall back to process.env as-is.
+  }
+}
 
 interface PoolEntry {
   id: string;
