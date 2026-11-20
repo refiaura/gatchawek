@@ -5,12 +5,13 @@ import type { RarityKey } from "./rarity.js";
 export const MAX_PENDING_BATTLES = 3;
 export const BATTLE_TTL_SEC = 900;
 
-export const BATTLE_BASE_POWER: Record<RarityKey | "holo", number> = {
+export const BATTLE_BASE_POWER: Record<RarityKey, number> = {
   common: 100,
   rare: 135,
   super_rare: 175,
   ultra_rare: 220,
   holo: 275,
+  secret: 340,
 };
 
 export const BATTLE_DUP_STEP = 5;

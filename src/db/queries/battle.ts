@@ -62,7 +62,7 @@ export async function listTargetBattleCards(
   targetId: string,
 ): Promise<TargetCardOption[]> {
   const results = await nativeBatch(db, [
-    sql`SELECT ${cards.id} AS id, ${members.name} AS member_name, ${cards.photoLabel} AS photo_label, ${groups.badge} AS group_badge, ${cards.photoNo} AS photo_no, ${cards.rarity} AS rarity, ${userCards.quantity} AS quantity FROM ${userCards} JOIN ${cards} ON ${cards.id} = ${userCards.cardId} JOIN ${members} ON ${members.id} = ${cards.memberId} JOIN ${groups} ON ${groups.id} = ${cards.groupId} WHERE ${userCards.userId} = ${targetId} AND ${userCards.quantity} >= 1 AND ${cards.enabled} = 1 ORDER BY CASE ${cards.rarity} WHEN 'holo' THEN 0 WHEN 'ultra_rare' THEN 1 WHEN 'super_rare' THEN 2 WHEN 'rare' THEN 3 ELSE 4 END, ${userCards.quantity} DESC, ${members.nameLower}, ${cards.photoNo} LIMIT 25`,
+    sql`SELECT ${cards.id} AS id, ${members.name} AS member_name, ${cards.photoLabel} AS photo_label, ${groups.badge} AS group_badge, ${cards.photoNo} AS photo_no, ${cards.rarity} AS rarity, ${userCards.quantity} AS quantity FROM ${userCards} JOIN ${cards} ON ${cards.id} = ${userCards.cardId} JOIN ${members} ON ${members.id} = ${cards.memberId} JOIN ${groups} ON ${groups.id} = ${cards.groupId} WHERE ${userCards.userId} = ${targetId} AND ${userCards.quantity} >= 1 AND ${cards.enabled} = 1 ORDER BY CASE ${cards.rarity} WHEN 'secret' THEN 0 WHEN 'holo' THEN 1 WHEN 'ultra_rare' THEN 2 WHEN 'super_rare' THEN 3 WHEN 'rare' THEN 4 ELSE 5 END, ${userCards.quantity} DESC, ${members.nameLower}, ${cards.photoNo} LIMIT 25`,
   ]);
   const rows = (results[0]?.results ?? []) as unknown as {
     id: string;
