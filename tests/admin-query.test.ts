@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { eq } from "drizzle-orm";
 import { Miniflare } from "miniflare";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb, type Db } from "../src/db/client.js";
@@ -16,11 +17,14 @@ import {
 import {
   getAdminCard,
   getAdminCounts,
+  importAdminCard,
   listAdminCards,
+  listAdminPoolGroups,
   listAdminQueue,
   setAdminCardEnabled,
   setAdminCardImage,
 } from "../src/db/queries/admin.js";
+import { syncInjectChannel } from "../src/scheduled.js";
 import type { Env } from "../src/env.js";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -165,5 +169,136 @@ describe("listAdminQueue / getAdminCounts", () => {
       total: 4,
       pending: 1,
     });
+  });
+});
+
+describe("listAdminPoolGroups / importAdminCard", () => {
+  it("lists active pool-group pairs", async () => {
+    const pgs = await listAdminPoolGroups(db);
+    expect(pgs).toHaveLength(2);
+    expect(pgs.map((p) => `${p.poolId}:${p.groupId}`).sort()).toEqual([
+      "pejabat:g1",
+      "pejabat:g2",
+    ]);
+  });
+
+  it("imports a new 5-star holo card directly to D1 and updates counts", async () => {
+    const out1 = await importAdminCard(db, {
+      poolId: "pejabat",
+      groupId: "g1",
+      nama: "Refi Kaget",
+      rarity: "holo",
+      label: null,
+      imageUrl: "https://cdn.discordapp.com/attachments/1/2/refi.jpg",
+      now: 1_700_000_000_000,
+    });
+    expect(out1).toEqual({
+      status: "ok",
+      cardId: "refi-kaget-01",
+      memberId: "refi-kaget",
+      nama: "Refi Kaget",
+      rarity: "holo",
+      photoNo: 1,
+      serial: 5,
+    });
+    const detail1 = await getAdminCard(db, "refi-kaget-01");
+    expect(detail1).toMatchObject({
+      memberName: "Refi Kaget",
+      rarity: "holo",
+      holoEnabled: true,
+      enabled: true,
+      imageKind: "remote",
+    });
+
+    // Adding a second photo for the same member increments photoNo without duplicating member count.
+    const out2 = await importAdminCard(db, {
+      poolId: "pejabat",
+      groupId: "g1",
+      nama: "Refi Kaget",
+      rarity: "rare",
+      label: "Pose 2",
+      imageUrl: "https://cdn.discordapp.com/attachments/1/2/refi2.jpg",
+      now: 1_700_000_000_001,
+    });
+    expect(out2).toMatchObject({
+      status: "ok",
+      cardId: "refi-kaget-02",
+      photoNo: 2,
+      serial: 6,
+    });
+    const [grp] = await db.select().from(groups).where(eq(groups.id, "g1")).limit(1);
+    const [pl] = await db.select().from(pools).where(eq(pools.id, "pejabat")).limit(1);
+    expect(grp?.memberCount).toBe(2);
+    expect(pl?.memberCount).toBe(3);
+
+    const [audit] = await db
+      .select()
+      .from(injectQueue)
+      .where(eq(injectQueue.memberId, "refi-kaget"))
+      .limit(1);
+    expect(audit?.status).toBe("approved");
+    expect(audit?.messageId.startsWith("000000-gui-")).toBe(true);
+  });
+
+  it("rejects unknown groups and member group mismatches", async () => {
+    await expect(
+      importAdminCard(db, {
+        poolId: "pejabat",
+        groupId: "missing",
+        nama: "Test",
+        rarity: "common",
+        label: null,
+        imageUrl: "https://cdn.discordapp.com/x.png",
+        now: 100,
+      }),
+    ).resolves.toEqual({ status: "unknown-group" });
+
+    await expect(
+      importAdminCard(db, {
+        poolId: "pejabat",
+        groupId: "g2",
+        nama: "Refi Kaget",
+        rarity: "common",
+        label: null,
+        imageUrl: "https://cdn.discordapp.com/x.png",
+        now: 101,
+      }),
+    ).resolves.toEqual({
+      status: "member-group-mismatch",
+      existingPoolId: "pejabat",
+      existingGroupId: "g1",
+    });
+  });
+
+  it("keeps GUI audit rows out of the Discord sync cursor", async () => {
+    const d1 = await mf.getD1Database("DB");
+    await db.delete(injectQueue);
+    await importAdminCard(db, {
+      poolId: "pejabat",
+      groupId: "g1",
+      nama: "Cursor Guard",
+      rarity: "holo",
+      label: null,
+      imageUrl: "https://cdn.discordapp.com/attachments/1/2/cg.jpg",
+      now: 1_700_000_000_010,
+    });
+    const seenUrls: string[] = [];
+    const fetchMock = (async (input: unknown) => {
+      seenUrls.push(String(input));
+      return new Response("[]", { headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+    const syncEnv = {
+      DISCORD_PUBLIC_KEY: "x",
+      DB: d1,
+      PUBLIC_BASE_URL: "example.test",
+      DISCORD_BOT_TOKEN: "token",
+      INGEST_CHANNEL_ID: "c-inject",
+      INGEST_GUILD_ID: "g",
+      INJECT_APPROVER_IDS: "boss",
+      ADMIN_PASSWORD: "pw",
+      ADMIN_SECRET: "sec",
+    } satisfies Env;
+    await syncInjectChannel(syncEnv, fetchMock);
+    expect(seenUrls[0]).toBe("https://discord.com/api/v10/channels/c-inject/messages?limit=100");
   });
 });

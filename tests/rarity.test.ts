@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   HOLO_CHANCE,
   RARITY_KEYS,
+  RARITY_LABEL,
+  RARITY_STARS,
   RARITY_WEIGHTS,
   pickIndex,
   pickRarity,
@@ -21,6 +23,19 @@ function lcg(seed: number): () => number {
 const FULL: readonly RarityKey[] = RARITY_KEYS;
 
 describe("pickRarity distribution", () => {
+  it("exposes 5-star Holo metadata and 50/30/12/9/3 weights", () => {
+    expect(RARITY_KEYS).toContain("holo");
+    expect(RARITY_STARS.holo).toBe("★★★★★");
+    expect(RARITY_LABEL.holo).toBe("Holo");
+    expect(RARITY_WEIGHTS).toEqual({
+      common: 50,
+      rare: 30,
+      super_rare: 12,
+      ultra_rare: 9,
+      holo: 3,
+    });
+  });
+
   it("100k seeded rolls land within ±1pp of every weight", () => {
     const rand = lcg(12345);
     const counts: Record<RarityKey, number> = {
@@ -28,6 +43,7 @@ describe("pickRarity distribution", () => {
       rare: 0,
       super_rare: 0,
       ultra_rare: 0,
+      holo: 0,
     };
     const N = 100_000;
     for (let i = 0; i < N; i += 1) {
@@ -35,7 +51,7 @@ describe("pickRarity distribution", () => {
       expect(r).not.toBeNull();
       counts[r as RarityKey] += 1;
     }
-    const total = RARITY_WEIGHTS.common + RARITY_WEIGHTS.rare + RARITY_WEIGHTS.super_rare + RARITY_WEIGHTS.ultra_rare;
+    const total = RARITY_KEYS.reduce((s, k) => s + RARITY_WEIGHTS[k], 0);
     for (const key of FULL) {
       const expected = RARITY_WEIGHTS[key] / total;
       const actual = counts[key] / N;

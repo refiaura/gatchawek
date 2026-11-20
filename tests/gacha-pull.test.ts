@@ -200,12 +200,12 @@ describe("executePull labels and progress", () => {
     expect(first.groupOwned).toBe(1);
     expect(first.groupTotal).toBe(2);
 
-    // pull 2: roll into rare (0.9), index 0 of 2 rare cards → aa-02
+    // pull 2: roll into rare (0.7 in [50/92, 80/92)), index 0 of 2 rare cards → aa-02
     const second = await executePull(db, {
       userId,
       pool: POOL,
       now: now + 10,
-      rand: scripted([0.9, 0.0]),
+      rand: scripted([0.7, 0.0]),
     });
     expect(second.status).toBe("ok");
     if (second.status !== "ok") return;
@@ -218,7 +218,7 @@ describe("executePull labels and progress", () => {
       userId,
       pool: POOL,
       now: now + 20,
-      rand: scripted([0.9, 0.0]),
+      rand: scripted([0.7, 0.0]),
     });
     expect(third.status).toBe("ok");
     if (third.status !== "ok") return;

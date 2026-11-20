@@ -205,3 +205,29 @@ describe("getShowcaseCard", () => {
     await expect(getShowcaseCard(db, "u1", "nope")).resolves.toBeNull();
   });
 });
+
+describe("holo rarity in pamer", () => {
+  it("ranks holo above ultra_rare and shows 5 stars", async () => {
+    await db.insert(users).values({ id: "u-holo", createdAt: 1 });
+    await db.insert(cards).values({
+      id: "holo-1",
+      poolId: "pejabat",
+      groupId: "g1",
+      memberId: "anna",
+      serial: 999,
+      photoNo: 4,
+      rarity: "holo",
+      imageFile: "h1.webp",
+      enabled: true,
+    });
+    await db.insert(userCards).values([
+      { userId: "u-holo", cardId: "ultra-1", quantity: 1, firstObtainedAt: 1, lastObtainedAt: 1 },
+      { userId: "u-holo", cardId: "holo-1", quantity: 1, firstObtainedAt: 1, lastObtainedAt: 1 },
+    ]);
+    const rows = await searchShowcaseCards(db, "u-holo", "");
+    expect(rows.map((r) => r.id)).toEqual(["holo-1", "ultra-1"]);
+    expect(rows[0]?.label.startsWith("★★★★★")).toBe(true);
+    const card = await getShowcaseCard(db, "u-holo", "holo-1");
+    expect(card?.rarity).toBe("holo");
+  });
+});

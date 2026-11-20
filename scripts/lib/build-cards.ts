@@ -28,6 +28,7 @@ const RARITY_STOPS: Record<string, string[]> = {
   rare: ["#F472B6", "#A855F7", "#22D3EE"],
   super_rare: ["#F59E0B", "#FDE68A"],
   ultra_rare: ["#F43F5E", "#F59E0B", "#10B981", "#3B82F6", "#A855F7"],
+  holo: ["#38BDF8", "#A855F7", "#EC4899", "#F59E0B", "#10B981"],
 };
 
 const RARITY_COLOR: Record<string, string> = {
@@ -35,6 +36,7 @@ const RARITY_COLOR: Record<string, string> = {
   rare: "#A855F7",
   super_rare: "#F59E0B",
   ultra_rare: "#EC4899",
+  holo: "#FFD700",
 };
 
 const RARITY_LABEL: Record<string, string> = {
@@ -42,6 +44,7 @@ const RARITY_LABEL: Record<string, string> = {
   rare: "Rare",
   super_rare: "Super Rare",
   ultra_rare: "Ultra Rare",
+  holo: "Holo",
 };
 
 const RARITY_STARS: Record<string, string> = {
@@ -49,6 +52,7 @@ const RARITY_STARS: Record<string, string> = {
   rare: "★★",
   super_rare: "★★★",
   ultra_rare: "★★★★",
+  holo: "★★★★★",
 };
 
 let fontsRegistered = false;
