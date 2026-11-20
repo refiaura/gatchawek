@@ -21,14 +21,13 @@ import { handleCariAutocomplete } from "./commands/cari/handler.js";
 import { handlePamerAutocomplete } from "./commands/pamer/handler.js";
 import { ephemeralResponse } from "./discord/rest.js";
 import { handleInjectClick } from "./commands/inject-review/handler.js";
+import { handleBulkClick } from "./commands/bulk-review/handler.js";
 import { handleScheduled } from "./scheduled.js";
 import type { Env } from "./env.js";
-import { registerAdminRoutes } from "./admin/routes.js";
 
 const app = new Hono<{ Bindings: Env }>();
 
 app.get("/health", (c) => c.json({ status: "ok" }, 200));
-registerAdminRoutes(app);
 
 app.post("/interactions", async (c) => {
   const signature = c.req.header("X-Signature-Ed25519");
@@ -93,6 +92,13 @@ app.post("/interactions", async (c) => {
     if (ns === "inject") {
       return c.json(
         await handleInjectClick(component, c.env, (p) =>
+          c.executionCtx.waitUntil(p),
+        ),
+      );
+    }
+    if (ns === "bulk") {
+      return c.json(
+        await handleBulkClick(component, c.env, (p) =>
           c.executionCtx.waitUntil(p),
         ),
       );

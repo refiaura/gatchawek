@@ -19,6 +19,8 @@ import { tradeDefinition } from "./trade/definition.js";
 import { handleTrade } from "./trade/handler.js";
 import { injectReviewDefinition } from "./inject-review/definition.js";
 import { handleInjectReview } from "./inject-review/handler.js";
+import { bulkReviewDefinition } from "./bulk-review/definition.js";
+import { handleBulkReview } from "./bulk-review/handler.js";
 import { cariDefinition } from "./cari/definition.js";
 import { handleCari } from "./cari/handler.js";
 import { pamerDefinition } from "./pamer/definition.js";
@@ -43,6 +45,7 @@ export const commandDefinitions = [
   helpDefinition,
   tradeDefinition,
   injectReviewDefinition,
+  bulkReviewDefinition,
   cariDefinition,
   pamerDefinition,
   topDefinition,
@@ -57,6 +60,7 @@ const handlerEntries: [string, CommandHandler | CommandHandlerWithWait][] = [
   ["help", handleHelp],
   ["trade", handleTrade],
   ["inject-review", handleInjectReview],
+  ["bulk-review", handleBulkReview],
   ["cari", handleCari],
   ["pamer", handlePamer],
   ["top", handleTop],
