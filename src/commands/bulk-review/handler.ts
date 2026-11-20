@@ -1,5 +1,4 @@
 import {
-  InteractionResponseType,
   type APIChatInputApplicationCommandInteraction,
   type APIInteractionResponse,
   type APIMessageComponentInteraction,
@@ -37,6 +36,7 @@ function isApprover(env: Env, userId: string): boolean {
 export async function handleBulkReview(
   interaction: APIChatInputApplicationCommandInteraction,
   env: Env,
+  waitUntil: WaitUntil,
 ): Promise<APIInteractionResponse> {
   const userId = invokerId(interaction);
   if (userId === null) return ephemeralResponse("Tidak bisa membaca identitasmu.");
@@ -44,27 +44,51 @@ export async function handleBulkReview(
     return ephemeralResponse("Khusus kurator inject.");
   }
   const db = createDb(env);
-  let batch;
-  try {
-    batch = await oldestPendingBulkBatch(db);
-  } catch {
-    return ephemeralResponse("D1 sibuk/kuota habis, coba lagi.");
-  }
-  if (batch === null) return ephemeralResponse("Antrean bulk kosong. 🎉");
-  let batches: number;
-  try {
-    batches = await countPendingBulkBatches(db);
-  } catch {
-    return ephemeralResponse("D1 sibuk/kuota habis, coba lagi.");
-  }
-  return {
-    type: InteractionResponseType.ChannelMessageWithSource,
-    data: {
-      embeds: [buildBulkReviewEmbed({ batch, batchCount: batches })],
-      components: [{ type: 1, components: bulkReviewButtons(batch.baseId) }],
-      allowed_mentions: { parse: [] },
-    },
-  };
+  // Acknowledge within Discord's 3s window; heavy D1 reads happen after.
+  waitUntil(
+    (async () => {
+      try {
+        const batch = await oldestPendingBulkBatch(db);
+        if (batch === null) {
+          await patchOriginal(
+            interaction.application_id,
+            interaction.token,
+            env.DISCORD_BOT_TOKEN,
+            { content: "Antrean bulk kosong. 🎉 Pesan [bulk-json] yang baru masuk butuh ±5 menit diproses cron sebelum bisa direview." },
+          );
+          return;
+        }
+        let batches = 1;
+        try {
+          batches = await countPendingBulkBatches(db);
+        } catch {
+          // Counter best-effort; batch sudah di tangan, lanjut.
+        }
+        await patchOriginal(
+          interaction.application_id,
+          interaction.token,
+          env.DISCORD_BOT_TOKEN,
+          {
+            embeds: [buildBulkReviewEmbed({ batch, batchCount: batches })],
+            components: [{ type: 1, components: bulkReviewButtons(batch.baseId) }],
+            allowed_mentions: { parse: [] },
+          },
+        );
+      } catch {
+        try {
+          await patchOriginal(
+            interaction.application_id,
+            interaction.token,
+            env.DISCORD_BOT_TOKEN,
+            { content: "D1 sibuk/kuota habis, coba lagi." },
+          );
+        } catch {
+          // Never throw out of waitUntil.
+        }
+      }
+    })(),
+  );
+  return deferredResponse();
 }
 
 export async function handleBulkClick(
