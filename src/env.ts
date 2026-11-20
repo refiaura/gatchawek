@@ -9,4 +9,8 @@ export interface Env {
   INGEST_GUILD_ID: string;
   /** Comma-separated Discord user IDs allowed to approve/reject inject. */
   INJECT_APPROVER_IDS: string;
+  /** Owner password for /admin (wrangler secret, never committed). */
+  ADMIN_PASSWORD: string;
+  /** HMAC key for admin session cookies (wrangler secret). */
+  ADMIN_SECRET: string;
 }
