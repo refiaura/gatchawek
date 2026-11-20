@@ -12,7 +12,9 @@
     }
   ],
   "vars": {
-    "PUBLIC_BASE_URL": "gatchawek.yudistiraeka-pratama012.workers.dev"
+    "PUBLIC_BASE_URL": "gatchawek.yudistiraeka-pratama012.workers.dev",
+    "INGEST_CHANNEL_ID": "1573206124168216637",
+    "INGEST_GUILD_ID": "869121487020372020"
   },
   "env": {
     "staging": {
