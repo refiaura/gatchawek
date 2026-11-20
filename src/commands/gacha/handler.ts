@@ -71,6 +71,7 @@ async function followupPull(
             poolName: pool.name,
             poolEmoji: pool.emoji,
             memberName: outcome.card.memberName,
+            photoLabel: outcome.card.photoLabel,
             groupName: outcome.card.groupName,
             fullName: outcome.card.fullName,
             photoNo: outcome.card.photoNo,

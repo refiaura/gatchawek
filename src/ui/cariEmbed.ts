@@ -13,18 +13,20 @@ const RARITY_SHORT: Record<RarityKey, string> = {
 
 function cardLine(
   photoNo: number,
+  photoLabel: string | null,
   rarity: RarityKey,
   owners: { userId: string; qty: number; holoQty: number }[],
 ): string {
   const stars = RARITY_STARS[rarity];
+  const name = photoLabel ?? `Foto ${photoNo}`;
   if (owners.length === 0) {
-    return `📸 Foto ${photoNo} · ${stars} — Belum ada yang punya`;
+    return `📸 ${name} · ${stars} — Belum ada yang punya`;
   }
   const parts = owners.map((o) => {
     const holo = o.holoQty > 0 ? ` (✦×${o.holoQty})` : "";
     return `<@${o.userId}> ×${o.qty + o.holoQty}${holo}`;
   });
-  return `📸 Foto ${photoNo} · ${stars} (${RARITY_SHORT[rarity]}) · Punya: ${parts.join(", ")}`;
+  return `📸 ${name} · ${stars} (${RARITY_SHORT[rarity]}) · Punya: ${parts.join(", ")}`;
 }
 
 export function buildCariEmbed(
@@ -40,7 +42,7 @@ export function buildCariEmbed(
       lines.push("_Belum ada kartu._");
     } else {
       for (const c of m.cards) {
-        lines.push(cardLine(c.photoNo, c.rarity, c.owners));
+        lines.push(cardLine(c.photoNo, c.photoLabel, c.rarity, c.owners));
       }
     }
     lines.push("");

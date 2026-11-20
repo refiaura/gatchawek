@@ -82,6 +82,7 @@ export const cards = sqliteTable(
     serial: integer("serial").notNull(),
     photoNo: integer("photo_no").notNull(),
     rarity: text("rarity", { enum: RARITIES }).notNull(),
+    photoLabel: text("photo_label"),
     imageFile: text("image_file").notNull(),
     sourcePageUrl: text("source_page_url"),
     enabled: flag("enabled"),

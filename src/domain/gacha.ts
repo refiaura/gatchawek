@@ -1,4 +1,12 @@
+/** Per-photo display name: label when the photo has its own identity, else member. */
 export type PullKind = "new-member" | "new-photo" | "duplicate";
+
+export function cardDisplayName(
+  photoLabel: string | null,
+  memberName: string,
+): string {
+  return photoLabel ?? memberName;
+}
 
 export function pullKind(hasCard: boolean, memberOwned: boolean): PullKind {
   if (!hasCard && !memberOwned) return "new-member";

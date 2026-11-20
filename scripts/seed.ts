@@ -139,8 +139,8 @@ export function renderSeedSql(
         if (imageFile === undefined) continue; // raw missing: keep old row, skip update
         const holoEnabled = holoIds.has(cardId) ? 1 : 0;
         lines.push(
-          `INSERT INTO cards (id, pool_id, group_id, member_id, serial, photo_no, rarity, image_file, source_page_url, enabled, holo_enabled) VALUES (${sqlText(cardId)}, ${sqlText(manifest.pool)}, ${sqlText(manifest.group.id)}, ${sqlText(member.id)}, ${serial}, ${photo.photoNo}, ${sqlText(photo.rarity)}, ${sqlText(imageFile)}, ${sqlNullableText(photo.sourcePageUrl)}, 1, ${holoEnabled}) ` +
-            `ON CONFLICT(id) DO UPDATE SET pool_id=excluded.pool_id, group_id=excluded.group_id, member_id=excluded.member_id, serial=excluded.serial, photo_no=excluded.photo_no, rarity=excluded.rarity, image_file=excluded.image_file, source_page_url=excluded.source_page_url, enabled=1, holo_enabled=excluded.holo_enabled;`,
+          `INSERT INTO cards (id, pool_id, group_id, member_id, serial, photo_no, rarity, photo_label, image_file, source_page_url, enabled, holo_enabled) VALUES (${sqlText(cardId)}, ${sqlText(manifest.pool)}, ${sqlText(manifest.group.id)}, ${sqlText(member.id)}, ${serial}, ${photo.photoNo}, ${sqlText(photo.rarity)}, ${sqlNullableText(photo.label)}, ${sqlText(imageFile)}, ${sqlNullableText(photo.sourcePageUrl)}, 1, ${holoEnabled}) ` +
+            `ON CONFLICT(id) DO UPDATE SET pool_id=excluded.pool_id, group_id=excluded.group_id, member_id=excluded.member_id, serial=excluded.serial, photo_no=excluded.photo_no, rarity=excluded.rarity, photo_label=excluded.photo_label, image_file=excluded.image_file, source_page_url=excluded.source_page_url, enabled=1, holo_enabled=excluded.holo_enabled;`,
         );
       }
     }

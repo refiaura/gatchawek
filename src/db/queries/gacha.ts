@@ -120,6 +120,7 @@ export interface CandidateCard {
   imageFile: string;
   sourcePageUrl: string | null;
   memberName: string;
+  photoLabel: string | null;
   fullName: string | null;
   photoTotal: number;
   groupName: string;
@@ -143,6 +144,7 @@ export async function getCandidatesByRarity(
       imageFile: cards.imageFile,
       sourcePageUrl: cards.sourcePageUrl,
       memberName: members.name,
+      photoLabel: cards.photoLabel,
       fullName: members.fullName,
       photoTotal: members.photoTotal,
       groupName: groups.name,

@@ -12,6 +12,7 @@ export interface KoleksiFilters {
 export interface OwnedPhoto {
   photoNo: number;
   quantity: number;
+  photoLabel: string | null;
 }
 
 export interface OwnedMemberRow {
@@ -68,11 +69,13 @@ interface RawPageRow {
   blob: string | null;
 }
 
+/** Blob packs photo entries with ASCII control separators (0x1E field, 0x1F
+ * entry) so display labels with commas/colons survive the round-trip. */
 function parseBlob(blob: string | null): OwnedPhoto[] {
   if (blob === null || blob === "") return [];
   const out: OwnedPhoto[] = [];
-  for (const part of blob.split(",")) {
-    const [noRaw, qtyRaw] = part.split(":");
+  for (const part of blob.split("\u001F")) {
+    const [noRaw, qtyRaw, labelRaw] = part.split("\u001E");
     const photoNo = Number(noRaw);
     const quantity = Number(qtyRaw);
     if (
@@ -85,7 +88,11 @@ function parseBlob(blob: string | null): OwnedPhoto[] {
     ) {
       continue;
     }
-    out.push({ photoNo, quantity });
+    out.push({
+      photoNo,
+      quantity,
+      photoLabel: labelRaw === undefined || labelRaw === "" ? null : labelRaw,
+    });
   }
   out.sort((a, b) => a.photoNo - b.photoNo);
   return out;
@@ -140,7 +147,7 @@ export async function getKoleksiPage(
   const page = clampPage(requestedPage, totalPages);
 
   const pageResults = await nativeBatch(db, [
-    sql`SELECT ${members.id} AS member_id, ${members.name} AS member_name, ${members.photoTotal} AS photo_total, ${members.groupId} AS group_id, ${groups.name} AS group_name, ${groups.badge} AS group_badge, COUNT(DISTINCT ${userCards.cardId}) AS owned_photos, GROUP_CONCAT(${cards.photoNo} || ':' || ${userCards.quantity}) AS blob FROM ${userCards} JOIN ${cards} ON ${cards.id} = ${userCards.cardId} JOIN ${members} ON ${members.id} = ${cards.memberId} JOIN ${groups} ON ${groups.id} = ${cards.groupId} WHERE ${scopeCondition} GROUP BY ${members.id} ORDER BY ${members.sortOrder}, ${members.name} LIMIT ${PAGE_SIZE} OFFSET ${page * PAGE_SIZE}`,
+    sql`SELECT ${members.id} AS member_id, ${members.name} AS member_name, ${members.photoTotal} AS photo_total, ${members.groupId} AS group_id, ${groups.name} AS group_name, ${groups.badge} AS group_badge, COUNT(DISTINCT ${userCards.cardId}) AS owned_photos, GROUP_CONCAT(${cards.photoNo} || char(30) || ${userCards.quantity} || char(30) || IFNULL(${cards.photoLabel}, ''), char(31)) AS blob FROM ${userCards} JOIN ${cards} ON ${cards.id} = ${userCards.cardId} JOIN ${members} ON ${members.id} = ${cards.memberId} JOIN ${groups} ON ${groups.id} = ${cards.groupId} WHERE ${scopeCondition} GROUP BY ${members.id} ORDER BY ${members.sortOrder}, ${members.name} LIMIT ${PAGE_SIZE} OFFSET ${page * PAGE_SIZE}`,
   ]);
   const rawRows = (pageResults[0]?.results ?? []) as unknown as RawPageRow[];
   const pageMembers: OwnedMemberRow[] = rawRows.map((row) => ({

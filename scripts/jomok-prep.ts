@@ -153,6 +153,7 @@ interface BuiltPhoto {
   sourcePageUrl: string;
   license: null;
   author: null;
+  label: string;
 }
 
 interface BuiltMember {
@@ -233,6 +234,7 @@ async function runBuild(): Promise<void> {
           sourcePageUrl: `https://example.com/jomok/${row.sourceFile}`,
           license: null,
           author: null,
+          label: row.memberName,
         };
       }),
     });

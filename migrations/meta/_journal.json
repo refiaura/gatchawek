@@ -15,6 +15,13 @@
       "when": 1795114003987,
       "tag": "0001_icy_alice",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795142854680,
+      "tag": "0002_mute_photo_label",
+      "breakpoints": true
     }
   ]
 }

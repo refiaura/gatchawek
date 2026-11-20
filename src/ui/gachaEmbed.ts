@@ -5,7 +5,7 @@ import {
   type APIButtonComponentWithCustomId,
   type APIEmbed,
 } from "discord-api-types/v10";
-import type { PullKind } from "../domain/gacha.js";
+import { cardDisplayName, type PullKind } from "../domain/gacha.js";
 import {
   RARITY_COLOR,
   RARITY_LABEL,
@@ -22,6 +22,7 @@ export interface PullEmbedArgs {
   poolName: string;
   poolEmoji: string;
   memberName: string;
+  photoLabel: string | null;
   groupName: string;
   fullName: string | null;
   photoNo: number;
@@ -54,10 +55,12 @@ function describePull(kind: PullKind, quantity: number, isHolo = false): string 
 export function buildPullEmbed(args: PullEmbedArgs): APIEmbed {
   const stars = RARITY_STARS[args.rarity];
   const label = RARITY_LABEL[args.rarity];
-  const fullName = args.fullName ?? args.memberName;
+  const displayName = cardDisplayName(args.photoLabel, args.memberName);
+  // Labeled photos show their own name; unlabeled keep the legacy full line.
+  const nameLine = args.photoLabel ?? args.fullName ?? args.memberName;
   const description = [
     `<@${args.userId}> dapet photocard ${args.poolName} ${args.poolEmoji} ${stars} **${label}**!`,
-    `${args.groupName} · ${fullName} · 📸 Foto ${args.photoNo}/${args.photoTotal}`,
+    `${args.groupName} · ${nameLine} · 📸 Foto ${args.photoNo}/${args.photoTotal}`,
     describePull(args.kind, args.quantity, args.isHolo),
     `📚 Koleksi ${args.groupName}: **${args.groupOwned}/${args.groupTotal}**`,
   ];
@@ -65,7 +68,7 @@ export function buildPullEmbed(args: PullEmbedArgs): APIEmbed {
   if (args.isFirstClaim)
     description.push(`🌍 Orang pertama yang punya ${args.memberName}!`);
   return {
-    title: `${args.isHolo ? "✦ " : ""}🎴 ${args.memberName} (${args.groupName})`,
+    title: `${args.isHolo ? "✦ " : ""}🎴 ${displayName} (${args.groupName})`,
     description: description.join("\n"),
     color: args.isHolo ? 0xffd700 : RARITY_COLOR[args.rarity],
     image: { url: args.imageUrl },

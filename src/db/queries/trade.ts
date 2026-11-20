@@ -11,6 +11,7 @@ import { nativeBatch, type Db } from "../client.js";
 export interface TradeCardView {
   cardId: string;
   memberName: string;
+  photoLabel: string | null;
   groupBadge: string;
   photoNo: number;
   rarity: RarityKey;
@@ -184,6 +185,7 @@ export async function getTradeCardViews(
     .select({
       id: cards.id,
       memberName: members.name,
+      photoLabel: cards.photoLabel,
       groupBadge: groups.badge,
       photoNo: cards.photoNo,
       rarity: cards.rarity,
@@ -197,6 +199,7 @@ export async function getTradeCardViews(
     views.set(row.id, {
       cardId: row.id,
       memberName: row.memberName,
+      photoLabel: row.photoLabel,
       groupBadge: row.groupBadge,
       photoNo: row.photoNo,
       rarity: row.rarity as RarityKey,

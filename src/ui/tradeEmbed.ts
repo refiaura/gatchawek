@@ -6,6 +6,7 @@ import {
 } from "discord-api-types/v10";
 import { RARITY_LABEL, RARITY_STARS } from "../domain/rarity.js";
 import { tradeCustomId } from "../domain/trade.js";
+import { cardDisplayName } from "../domain/gacha.js";
 import type { TradeCardView } from "../db/queries/trade.js";
 
 export type TradeEmbedStatus =
@@ -17,7 +18,8 @@ export type TradeEmbedStatus =
   | "expired";
 
 export function tradeCardLine(card: TradeCardView): string {
-  return `**${card.memberName}** (${card.groupBadge}) · Foto ${card.photoNo} · ${RARITY_STARS[card.rarity]} ${RARITY_LABEL[card.rarity]}`;
+  const displayName = cardDisplayName(card.photoLabel, card.memberName);
+  return `**${displayName}** (${card.groupBadge}) · Foto ${card.photoNo} · ${RARITY_STARS[card.rarity]} ${RARITY_LABEL[card.rarity]}`;
 }
 
 export function tradeStatusLine(

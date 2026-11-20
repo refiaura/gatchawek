@@ -49,6 +49,7 @@ export const photoSchema = z.object({
   sourcePageUrl: sourcePageUrlSchema,
   license: z.string().nullable(),
   author: z.string().nullable(),
+  label: z.string().min(1).max(60).optional(),
   focus: focusSchema.default({ x: 0.5, y: 0.35 }),
   enabled: z.boolean().default(true),
 });

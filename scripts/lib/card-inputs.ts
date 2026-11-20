@@ -144,6 +144,7 @@ export async function collectCardInputs(
           cardId,
           badge: groupBadge.get(manifest.group.id) ?? manifest.group.id,
           memberName: member.name,
+          photoLabel: photo.label ?? null,
           fullName: member.fullName ?? null,
           rarity: photo.rarity,
           serial,

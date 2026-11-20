@@ -11,12 +11,15 @@ import type {
   OwnedMemberRow,
 } from "../db/queries/koleksi.js";
 export function formatOwnedPhotos(
-  photos: { photoNo: number; quantity: number }[],
+  photos: { photoNo: number; quantity: number; photoLabel?: string | null }[],
 ): string {
   if (photos.length === 0) return "—";
   const sorted = [...photos].sort((a, b) => a.photoNo - b.photoNo);
   return sorted
-    .map((p) => (p.quantity >= 2 ? `#${p.photoNo}×${p.quantity}` : `#${p.photoNo}`))
+    .map((p) => {
+      const qty = p.quantity >= 2 ? `×${p.quantity}` : "";
+      return p.photoLabel ? `Foto ${p.photoNo} · ${p.photoLabel}${qty}` : `#${p.photoNo}${qty}`;
+    })
     .join(" ");
 }
 

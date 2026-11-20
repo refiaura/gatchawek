@@ -12,6 +12,7 @@ export interface CariOwner {
 export interface CariCard {
   cardId: string;
   photoNo: number;
+  photoLabel: string | null;
   rarity: RarityKey;
   owners: CariOwner[];
 }
@@ -62,6 +63,7 @@ export async function searchMembers(
       id: cards.id,
       memberId: cards.memberId,
       photoNo: cards.photoNo,
+      photoLabel: cards.photoLabel,
       rarity: cards.rarity,
     })
     .from(cards)
@@ -77,7 +79,7 @@ export async function searchMembers(
   for (const c of cardRows) {
     const list = byMember.get(c.memberId) ?? [];
     if (list.length < CARI_CARD_LIMIT) {
-      list.push({ cardId: c.id, photoNo: c.photoNo, rarity: c.rarity, owners: [] });
+      list.push({ cardId: c.id, photoNo: c.photoNo, photoLabel: c.photoLabel, rarity: c.rarity, owners: [] });
       byMember.set(c.memberId, list);
     }
   }

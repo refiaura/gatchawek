@@ -12,6 +12,7 @@ export interface CardInput {
   cardId: string;
   badge: string;
   memberName: string;
+  photoLabel: string | null;
   fullName: string | null;
   rarity: string;
   serial: number;
@@ -167,11 +168,13 @@ export async function buildCardImage(input: CardInput): Promise<Buffer> {
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "#FFFFFF";
   ctx.font = `700 56px ${nameFont}, sans-serif`;
-  ctx.fillText(input.memberName, pad, ih - 118, iw - pad * 2);
-  if (input.fullName !== null && input.fullName !== "") {
+  const title = input.photoLabel ?? input.memberName;
+  const subtitle = input.photoLabel ?? input.fullName;
+  ctx.fillText(title, pad, ih - 118, iw - pad * 2);
+  if (subtitle !== null && subtitle !== "") {
     ctx.font = `400 22px ${bodyFont}, sans-serif`;
     ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.fillText(input.fullName, pad, ih - 86, iw - pad * 2);
+    ctx.fillText(input.photoLabel !== null ? input.memberName : subtitle, pad, ih - 86, iw - pad * 2);
   }
   ctx.font = `700 20px ${nameFont}, sans-serif`;
   ctx.fillStyle = labelColor;
