@@ -23,12 +23,13 @@ export interface ParseSubmissionInput {
   messageId: string;
 }
 
-/** One card entry inside a bulk JSON attachment. Field-level defaults
- * (pool/grup/rarity/sumber) come from the message template; the entry only
- * carries per-card data. */
+/** One card entry inside a bulk JSON attachment. pool/grup/sumber/rarity
+ * defaults come from the message template; the entry carries per-card data
+ * and may override rarity per row. */
 export interface BulkCardEntry {
   nama: string;
   imageUrl: string;
+  rarity?: string | null;
   label?: string | null;
   sumber?: string | null;
 }
@@ -77,7 +78,7 @@ export const SUBMISSION_TEMPLATE = [
   "[nama] Nama Lengkap",
   "[pool] pejabat",
   "[grup] kabinet-merah-putih",
-  "[rarity] rare",
+  "[rarity] (default tiap kartu; tiap baris bisa override)",
   "[label] (opsional, maks 60 karakter)",
   "[sumber] (opsional, link https)",
 ].join("\n");
@@ -234,16 +235,17 @@ export function parseSubmission(
   };
 
 }
-/** Bulk template header: pool/grup/rarity/sumber defaults shared by every
- * card in the attached JSON file. `[bulk-json]` marks the message so the
+/** Bulk template header: pool/grup defaults shared by every card in the
+ * attached JSON file; rarity/sumber may be defaulted here or overridden per
+ * row. `[bulk-json]` marks the message so the
  * single-photo path ignores it and vice versa. */
 export const BULK_TEMPLATE = [
   "[bulk-json]",
   "[pool] pejabat",
   "[grup] kabinet-merah-putih",
-  "[rarity] rare",
+  "[rarity] (default tiap kartu; tiap baris bisa override)",
   "[sumber] (opsional, link https — default tiap kartu)",
-  "(lampirkan 1 file .json: array [{nama, imageUrl, label?, sumber?}], maks 50 kartu)",
+  "(lampirkan 1 file .json: array [{nama, imageUrl, rarity?, label?, sumber?}], maks 50 kartu)",
 ].join("\n");
 
 export function formatBulkRejectionReply(errors: readonly string[]): string {
@@ -256,7 +258,7 @@ export function formatBulkRejectionReply(errors: readonly string[]): string {
     "```",
     BULK_TEMPLATE,
     "```",
-    'Contoh isi file .json: [{"nama": "Nama Lengkap", "imageUrl": "https://…"}]',
+    'Contoh isi file .json: [{"nama": "Nama Lengkap", "imageUrl": "https://…", "rarity": "rare"}]',
   ].join("\n");
 }
 
@@ -309,15 +311,13 @@ export function parseBulkSubmission(
     }
   }
   const rarityRaw = fields.get("rarity") ?? "";
-  let rarity: RarityKey | null = null;
-  if (rarityRaw === "") {
-    errors.push("missing required field [rarity]");
-  } else {
+  let defaultRarity: RarityKey | null = null;
+  if (rarityRaw !== "") {
     const normalized = rarityRaw.toLowerCase();
     if (!isRarityKey(normalized)) {
       errors.push(`invalid [rarity] "${rarityRaw}": must be one of ${RARITY_KEYS.join(", ")}`);
     } else {
-      rarity = normalized;
+      defaultRarity = normalized;
     }
   }
   const messageUrl = `https://discord.com/channels/${input.guildId}/${input.channelId}/${input.messageId}`;
@@ -353,14 +353,27 @@ export function parseBulkSubmission(
   if (rows.length < 1 || rows.length > BULK_MAX_CARDS) {
     errors.push(`expected 1-${String(BULK_MAX_CARDS)} cards in bulk .json, found ${String(rows.length)}`);
   }
-  if (errors.length > 0 || pool === null || grup === null || rarity === null) {
+  if (errors.length > 0 || pool === null || grup === null) {
     return { ok: false, errors };
   }
   const cards: ParsedSubmission[] = [];
   rows.forEach((row, i) => {
     const tag = `row ${String(i + 1)}`;
     if (!isBulkEntry(row)) {
-      errors.push(`${tag}: must be {nama: string, imageUrl: https URL, label?: string, sumber?: https URL}`);
+      errors.push(`${tag}: must be {nama, imageUrl, rarity?, label?, sumber?}`);
+      return;
+    }
+    let rarity: RarityKey | null = defaultRarity;
+    if (row.rarity !== undefined && row.rarity !== null && row.rarity !== "") {
+      const normalized = row.rarity.toLowerCase();
+      if (!isRarityKey(normalized)) {
+        errors.push(`${tag}: rarity must be one of ${RARITY_KEYS.join(", ")} (found "${row.rarity}")`);
+        return;
+      }
+      rarity = normalized;
+    }
+    if (rarity === null) {
+      errors.push(`${tag}: rarity missing and no [rarity] default in message`);
       return;
     }
     const nama = row.nama.trim();

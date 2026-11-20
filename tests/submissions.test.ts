@@ -262,5 +262,43 @@ describe("parseBulkSubmission", () => {
     });
     expect(tooMany.ok).toBe(false);
   });
+
+  it("supports per-row rarity override with message fallback", () => {
+    const jsonText = JSON.stringify([
+      { nama: "A", imageUrl: "https://example.test/a.jpg", rarity: "ultra_rare" },
+      { nama: "B", imageUrl: "https://example.test/b.jpg" },
+    ]);
+    const result = parseBulkSubmission({
+      content: HEADER,
+      attachments: [JSON_FILE],
+      jsonText,
+      ...BASE,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.cards[0]?.rarity).toBe("ultra_rare");
+    expect(result.value.cards[1]?.rarity).toBe("rare");
+  });
+
+  it("rejects rows without rarity when no message default exists", () => {
+    const noDefault = "[bulk-json]\n[pool] pejabat\n[grup] kabinet-merah-putih";
+    const missing = parseBulkSubmission({
+      content: noDefault,
+      attachments: [JSON_FILE],
+      jsonText: JSON.stringify([{ nama: "A", imageUrl: "https://example.test/a.jpg" }]),
+      ...BASE,
+    });
+    expect(missing.ok).toBe(false);
+    const badValue = parseBulkSubmission({
+      content: HEADER,
+      attachments: [JSON_FILE],
+      jsonText: JSON.stringify([{ nama: "A", imageUrl: "https://example.test/a.jpg", rarity: "legendary" }]),
+      ...BASE,
+    });
+    expect(badValue.ok).toBe(false);
+    if (!badValue.ok) {
+      expect(badValue.errors.some((e) => e.includes("row 1") && e.includes("rarity"))).toBe(true);
+    }
+  });
 });
 });

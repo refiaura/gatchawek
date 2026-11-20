@@ -201,3 +201,108 @@ export async function rejectQueued(
   ]);
   return (res[0]?.meta.changes ?? 0) > 0;
 }
+
+/** A bulk batch = all pending rows sharing one source message (`-bN` suffix).
+ * Single-photo messages never match: their ids carry no suffix. */
+export interface BulkBatch {
+  /** Original message id (prefix before `-bN`). */
+  baseId: string;
+  rows: QueueRow[];
+}
+
+/**
+ * Oldest pending bulk batch: earliest `-bN` row defines the batch, all its
+ * pending siblings come along. Returns null when no bulk row is pending.
+ */
+export async function oldestPendingBulkBatch(db: Db): Promise<BulkBatch | null> {
+  const [first] = await db
+    .select()
+    .from(injectQueue)
+    .where(
+      and(
+        eq(injectQueue.status, "pending"),
+        sql`${injectQueue.messageId} LIKE '%-b%'`,
+      ),
+    )
+    .orderBy(asc(injectQueue.submittedAt))
+    .limit(1);
+  const head = (first as QueueRow | undefined) ?? null;
+  if (head === null) return null;
+  const dash = head.messageId.lastIndexOf("-b");
+  if (dash < 0) return null;
+  const baseId = head.messageId.slice(0, dash);
+  const siblings = (await db
+    .select()
+    .from(injectQueue)
+    .where(
+      and(
+        eq(injectQueue.status, "pending"),
+        sql`${injectQueue.messageId} LIKE ${baseId + "-b%"}`,
+      ),
+    )
+    .orderBy(asc(injectQueue.messageId))) as QueueRow[];
+  if (siblings.length === 0) return null;
+  return { baseId, rows: siblings };
+}
+
+/** Distinct pending bulk batches (for the "N batch antre" counter). */
+export async function countPendingBulkBatches(db: Db): Promise<number> {
+  const rows = (await db
+    .select({ messageId: injectQueue.messageId })
+    .from(injectQueue)
+    .where(
+      and(
+        eq(injectQueue.status, "pending"),
+        sql`${injectQueue.messageId} LIKE '%-b%'`,
+      ),
+    )) as Array<{ messageId: string }>;
+  const bases = new Set<string>();
+  for (const r of rows) {
+    const dash = r.messageId.lastIndexOf("-b");
+    if (dash > 0) bases.add(r.messageId.slice(0, dash));
+  }
+  return bases.size;
+}
+
+export interface BulkApproveOutcome {
+  approved: Array<{ messageId: string; cardId: string }>;
+  skipped: string[];
+}
+
+/**
+ * All-or-nothing review of one bulk batch. Each row goes through the same
+ * single-approve path (serial/photoNo assigned per row, atomic batch); rows
+ * that fail (race, unknown group) are reported as skipped.
+ */
+export async function approveBulkBatch(
+  db: Db,
+  rows: QueueRow[],
+  reviewerId: string,
+  now: number,
+): Promise<BulkApproveOutcome> {
+  const approved: Array<{ messageId: string; cardId: string }> = [];
+  const skipped: string[] = [];
+  for (const row of rows) {
+    const outcome = await approveQueued(db, row.messageId, reviewerId, now);
+    if (outcome.status === "ok") {
+      approved.push({ messageId: row.messageId, cardId: outcome.cardId });
+    } else {
+      skipped.push(row.messageId);
+    }
+  }
+  return { approved, skipped };
+}
+
+/** Reject every pending row of one bulk batch; returns rejected count. */
+export async function rejectBulkBatch(
+  db: Db,
+  rows: QueueRow[],
+  reviewerId: string,
+  now: number,
+): Promise<number> {
+  let n = 0;
+  for (const row of rows) {
+    if (await rejectQueued(db, row.messageId, reviewerId, now)) n += 1;
+  }
+  return n;
+}
