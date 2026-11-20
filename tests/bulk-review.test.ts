@@ -14,8 +14,8 @@ import {
   approveBulkBatch,
   countPending,
   countPendingBulkBatches,
-  enqueueMessage,
   oldestPendingBulkBatch,
+  enqueueMessage,
   rejectBulkBatch,
 } from "../src/db/queries/inject.js";
 import {
@@ -262,7 +262,8 @@ describe("bulk batch queries", () => {
 
 describe("handleBulkReview", () => {
   it("rejects non-approvers", async () => {
-    const res = await handleBulkReview(slash("random"), env);
+    const { waitUntil } = captureTasks();
+    const res = await handleBulkReview(slash("random"), env, waitUntil);
     if (res.type !== 4 || res.data === undefined) throw new Error("expected channel message");
     expect(res.data.content).toContain("kurator");
   });
@@ -281,16 +282,63 @@ describe("handleBulkReview", () => {
         imageUrl: "https://cdn.example.com/5.png",
       }),
     ).toBe(true);
-    const res = await handleBulkReview(slash("boss"), env);
-    if (res.type !== 4 || res.data === undefined) throw new Error("expected channel message");
-    const embeds = (res.data.embeds ?? []) as Array<{ title?: string; description?: string }>;
-    expect(embeds[0]?.title).toBe("📦 Review Bulk");
-    expect(embeds[0]?.description).toContain("Tokoh Lima");
-    const components = (res.data.components ?? []) as Array<{
-      components: Array<{ custom_id: string }>;
-    }>;
-    const ids = components[0]?.components.map((c) => c.custom_id) ?? [];
-    expect(ids).toEqual(["bulk:ok:m-bulk3", "bulk:no:m-bulk3"]);
+    const { tasks, waitUntil } = captureTasks();
+    let patched: Record<string, unknown> | null = null;
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: unknown, init?: { method?: string; body?: string }) => {
+      if (init?.method === "PATCH") {
+        patched = JSON.parse(String(init.body)) as Record<string, unknown>;
+      }
+      return new Response(JSON.stringify({}));
+    }) as typeof fetch;
+    try {
+      const res = await handleBulkReview(slash("boss"), env, waitUntil);
+      expect(res.type).toBe(5);
+      await Promise.all(tasks.map((t) => t.catch(() => {})));
+      if (patched === null) throw new Error("expected patchOriginal call");
+      const embeds = ((patched as Record<string, unknown>)["embeds"] ?? []) as Array<{ title?: string; description?: string }>;
+      expect(embeds[0]?.title).toBe("📦 Review Bulk");
+      expect(embeds[0]?.description).toContain("Tokoh Lima");
+      const components = ((patched as Record<string, unknown>)["components"] ?? []) as Array<{
+        components: Array<{ custom_id: string }>;
+      }>;
+      const ids = components[0]?.components.map((c) => c.custom_id) ?? [];
+      expect(ids).toEqual(["bulk:ok:m-bulk3", "bulk:no:m-bulk3"]);
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
+  it("shows empty-queue notice with cron hint when nothing pending", async () => {
+    const db = createDb(env);
+    // Drain oldest bulk leftovers first so the queue has no bulk batch left
+    // (single-photo rows never match the bulk batch query).
+    const leftover = await oldestPendingBulkBatch(db);
+    if (leftover !== null) {
+      expect(await rejectBulkBatch(db, leftover.rows, "boss", Date.now())).toBeGreaterThan(0);
+    }
+    expect(await countPendingBulkBatches(db)).toBe(0);
+    const { tasks, waitUntil } = captureTasks();
+    let patched: Record<string, unknown> | null = null;
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: unknown, init?: { method?: string; body?: string }) => {
+      if (init?.method === "PATCH") {
+        patched = JSON.parse(String(init.body)) as Record<string, unknown>;
+      }
+      return new Response(JSON.stringify({}));
+    }) as typeof fetch;
+    try {
+      // Solo single-photo row is invisible to bulk review: batch query finds nothing.
+      const res = await handleBulkReview(slash("boss"), env, waitUntil);
+      expect(res.type).toBe(5);
+      await Promise.all(tasks.map((t) => t.catch(() => {})));
+      if (patched === null) throw new Error("expected patchOriginal call");
+      const content = String((patched as Record<string, unknown>)["content"] ?? "");
+      expect(content).toContain("kosong");
+      expect(content).toContain("5 menit");
+    } finally {
+      globalThis.fetch = origFetch;
+    }
   });
 
   it("approve-all click approves the whole batch", async () => {
